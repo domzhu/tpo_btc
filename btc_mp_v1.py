@@ -1,8 +1,6 @@
 from MP import MpFunctions
 import requests
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.graph_objs as go
@@ -12,7 +10,7 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-app = dash.Dash(__name__)
+app = Dash(__name__)
 
 def get_ticksize(data, freq=30):
     # data = dflive30
@@ -34,7 +32,11 @@ def get_data(url):
     :return: ohlcv dataframe
     """
     response = requests.get(url)
+    response.raise_for_status()
     data = response.json()
+    if not isinstance(data, list) or len(data) == 0:
+        raise ValueError(f"Unexpected response: {data}")
+
     df = pd.DataFrame(data)
     df = df.apply(pd.to_numeric)
     df[0] = pd.to_datetime(df[0], unit='ms')
@@ -44,9 +46,39 @@ def get_data(url):
     return df
 
 
-url_30m = "https://www.binance.com/api/v1/klines?symbol=BTCBUSD&interval=30m"  # 10 days history 30 min ohlcv
-df = get_data(url_30m)
-df.to_csv('btcusd30m.csv', index=False)
+def get_recent_history(days=4, symbol="BTCBUSD", interval="30m"):
+    """Return recent historical data.
+
+    Parameters
+    ----------
+    days : int
+        Number of full days of history to retrieve prior to today.
+    symbol : str
+        Trading pair symbol.
+    interval : str
+        Binance interval string.
+    """
+    now = dt.datetime.now(dt.timezone.utc)
+    start = (now - dt.timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_ms = int(start.timestamp() * 1000)
+    end_ms = int(end.timestamp() * 1000)
+    url = (
+        f"https://www.binance.com/api/v3/klines?symbol={symbol}"
+        f"&interval={interval}&startTime={start_ms}&endTime={end_ms}&limit=1000"
+    )
+    try:
+        return get_data(url)
+    except Exception:
+        alt_url = (
+            f"https://api.binance.com/api/v3/klines?symbol={symbol}"
+            f"&interval={interval}&startTime={start_ms}&endTime={end_ms}&limit=1000"
+        )
+        return get_data(alt_url)
+
+
+# Load last four complete days plus today's session
+df = get_recent_history(days=4)
 
 # params
 context_days = len([group[1] for group in df.groupby(df.index.date)])  # Number of days used for context
@@ -77,7 +109,10 @@ date_mark = {str(h): {'label': str(h), 'style': {'color': 'blue', 'fontsize': '4
                                                  'text-orientation': 'upright'}} for h in range(0, len(dates))}
 
 mp = MpFunctions(data=df.copy(), freq=freq, style=mode, avglen=avglen, ticksize=ticksz, session_hr=trading_hr)
-mplist = mp.get_context()
+mplist_full = mp.get_context()
+# Drop today's partial session from historical context
+listmp_hist = mplist_full[0][:-1]
+distribution_hist = mplist_full[1].iloc[:-1].reset_index(drop=True)
 
 app.layout = html.Div(
     html.Div([
@@ -114,8 +149,8 @@ app.layout = html.Div(
                Input('slider', 'value')
                ])
 def update_graph(n, value):
-    listmp_hist = mplist[0]
-    distribution_hist = mplist[1]
+    # Use precomputed historical context
+    global listmp_hist, distribution_hist
 
     url_1m = "https://www.binance.com/api/v1/klines?symbol=BTCBUSD&interval=1m"
 

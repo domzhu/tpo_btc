@@ -28,7 +28,7 @@ If you want to use volume profile instead of TPO profile (based on price), then 
 
 ## What is new
 
- The old code was for the local data while this one fetches the live data for BTC-USD directly from Binance servers in 30 minute format for last 10 days (binance limitation) You can use it for any other pair supported by Binance. Fetching the data part is actually very small. Any URL that supports 30-minute data with a minimum history of 10 days will work with this code.
+ The old code was for the local data while this one fetches the live data for BTC-USD directly from Binance servers.  It now loads only the last four complete days of history plus today's session.
 
 Wrote one big class for all market profile and day ranking related calculations instead of functions which is the heart of the code. It also means no repeat calculations and more readable code
 
