@@ -58,16 +58,23 @@ def get_recent_history(days=4, symbol="BTCBUSD", interval="30m"):
     interval : str
         Binance interval string.
     """
-    now = dt.datetime.utcnow()
+    now = dt.datetime.now(dt.timezone.utc)
     start = (now - dt.timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
     end = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start_ms = int(start.timestamp() * 1000)
     end_ms = int(end.timestamp() * 1000)
     url = (
-        f"https://api.binance.com/api/v3/klines?symbol={symbol}"
-        f"&interval={interval}&startTime={start_ms}&endTime={end_ms}"
+        f"https://www.binance.com/api/v3/klines?symbol={symbol}"
+        f"&interval={interval}&startTime={start_ms}&endTime={end_ms}&limit=1000"
     )
-    return get_data(url)
+    try:
+        return get_data(url)
+    except Exception:
+        alt_url = (
+            f"https://api.binance.com/api/v3/klines?symbol={symbol}"
+            f"&interval={interval}&startTime={start_ms}&endTime={end_ms}&limit=1000"
+        )
+        return get_data(alt_url)
 
 
 # Load last four complete days plus today's session
