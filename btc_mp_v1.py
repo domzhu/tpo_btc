@@ -152,9 +152,15 @@ def update_graph(n, value):
     # Use precomputed historical context
     global listmp_hist, distribution_hist
 
-    url_1m = "https://www.binance.com/api/v1/klines?symbol=BTCBUSD&interval=1m"
+    def get_live_data(symbol="BTCBUSD", interval="1m"):
+        url = f"https://www.binance.com/api/v1/klines?symbol={symbol}&interval={interval}"
+        try:
+            return get_data(url)
+        except Exception:
+            alt_url = f"https://api.binance.com/api/v1/klines?symbol={symbol}&interval={interval}"
+            return get_data(alt_url)
 
-    df_live1 = get_data(url_1m)  # this line fetches new data for current day
+    df_live1 = get_live_data()  # fetch new data for current day
     df_live1 = df_live1.dropna()
 
     dflive30 = df_live1.resample('30min').agg({'datetime': 'last', 'Open': 'first', 'High': 'max', 'Low': 'min',
