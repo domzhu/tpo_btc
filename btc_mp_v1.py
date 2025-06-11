@@ -32,7 +32,11 @@ def get_data(url):
     :return: ohlcv dataframe
     """
     response = requests.get(url)
+    response.raise_for_status()
     data = response.json()
+    if not isinstance(data, list) or len(data) == 0:
+        raise ValueError(f"Unexpected response: {data}")
+
     df = pd.DataFrame(data)
     df = df.apply(pd.to_numeric)
     df[0] = pd.to_datetime(df[0], unit='ms')
